@@ -1,0 +1,32 @@
+{
+  "name": "unbound-kenya",
+  "version": "1.0.0",
+  "description": "Discover the 95% - Kenya's Hidden Tourism Gems",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@react-three/fiber": "^8.15.13",
+    "@react-three/drei": "^9.92.7",
+    "three": "^0.160.0",
+    "gsap": "^3.12.4",
+    "framer-motion": "^10.18.0",
+    "zustand": "^4.4.7",
+    "lucide-react": "^0.303.0",
+    "simplex-noise": "^4.0.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.1.0"
+  }
+}
