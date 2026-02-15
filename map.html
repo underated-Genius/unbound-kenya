@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map - Unbound Kenya</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="map-page">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">🦁</span>
+                <span class="logo-text">Unbound Kenya</span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="map.html" class="nav-link active">Map</a>
+                <a href="index.html#quiz" class="nav-link">Quiz</a>
+                <a href="my-gems.html" class="nav-link">My Gems</a>
+            </div>
+            <div class="nav-mobile-toggle" id="mobileToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Map Container -->
+    <div class="map-container">
+        <div class="map-header glass-card">
+            <h1 class="map-title">Explore Kenya's Hidden Gems</h1>
+            <p class="map-subtitle">Click on glowing markers to discover each destination</p>
+            <div class="map-controls">
+                <button class="control-button active" data-filter="all">All Gems</button>
+                <button class="control-button" data-filter="coast">Coast</button>
+                <button class="control-button" data-filter="rift">Rift Valley</button>
+                <button class="control-button" data-filter="north">Northern</button>
+                <button class="control-button" data-filter="west">Western</button>
+            </div>
+        </div>
+
+        <!-- 3D Map Canvas (Desktop) -->
+        <div id="mapCanvasContainer" class="map-canvas-container">
+            <canvas id="mapCanvas"></canvas>
+            <div class="map-hint glass-card">
+                <p>💡 Click and drag to rotate • Scroll to zoom • Click markers to learn more</p>
+            </div>
+        </div>
+
+        <!-- Mobile Fallback Map -->
+        <div id="mobileMapContainer" class="mobile-map-container" style="display: none;">
+            <div class="mobile-map-image">
+                <svg viewBox="0 0 800 1000" class="kenya-outline">
+                    <!-- Simplified Kenya outline -->
+                    <path d="M 400,100 L 500,150 L 550,200 L 600,300 L 620,400 L 600,500 L 550,600 L 500,700 L 450,800 L 400,850 L 350,800 L 300,700 L 250,600 L 200,500 L 180,400 L 200,300 L 250,200 L 300,150 Z" 
+                          fill="#e8d5b7" 
+                          stroke="#d4a574" 
+                          stroke-width="3"/>
+                </svg>
+                <!-- Mobile gem markers will be positioned absolutely -->
+                <div id="mobileMarkers"></div>
+            </div>
+        </div>
+
+        <!-- Gem Modal -->
+        <div id="gemModal" class="gem-modal" style="display: none;">
+            <div class="gem-modal-content glass-card">
+                <button class="modal-close" id="modalClose">&times;</button>
+                <div class="gem-modal-body">
+                    <img id="modalImage" src="" alt="" class="gem-modal-image">
+                    <div class="gem-modal-info">
+                        <h2 id="modalName" class="gem-modal-name"></h2>
+                        <p id="modalRegion" class="gem-modal-region"></p>
+                        <p id="modalDescription" class="gem-modal-description"></p>
+                        <div class="gem-modal-tags" id="modalTags"></div>
+                        <div class="gem-modal-actions">
+                            <button class="modal-button primary" id="modalFavorite">
+                                <span id="favoriteIcon">🤍</span> Save to Favourites
+                            </button>
+                            <button class="modal-button secondary" id="modalPlanTrip">
+                                📍 Plan Trip
+                            </button>
+                            <button class="modal-button secondary" id="modalShare">
+                                📤 Share
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="map-legend glass-card">
+            <h3 class="legend-title">Legend</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <span class="legend-marker coast-marker"></span>
+                    <span>Coast</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-marker rift-marker"></span>
+                    <span>Rift Valley</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-marker north-marker"></span>
+                    <span>Northern</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-marker west-marker"></span>
+                    <span>Western</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="data.js"></script>
+    <script>
+        // Map-specific JavaScript
+        let scene, camera, renderer, raycaster, mouse;
+        let gemMarkers = [];
+        let currentFilter = 'all';
+        let selectedGem = null;
+
+        // Check if mobile
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle mobile nav toggle
+            const mobileToggle = document.getElementById('mobileToggle');
+            const navLinks = document.querySelector('.nav-links');
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', function() {
+                    navLinks.classList.toggle('active');
+                });
+            }
+
+            if (isMobile) {
+                initMobileMap();
+            } else {
+                init3DMap();
+            }
+            
+            setupFilterControls();
+            setupModal();
+            
+            // Check for region filter from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const region = urlParams.get('region');
+            if (region) {
+                filterGems(region);
+                const button = document.querySelector(`[data-filter="${region}"]`);
+                if (button) {
+                    document.querySelectorAll('.control-button').forEach(b => b.classList.remove('active'));
+                    button.classList.add('active');
+                }
+            }
+        });
+
+        // Initialize 3D Map
+        function init3DMap() {
+            const container = document.getElementById('mapCanvasContainer');
+            const canvas = document.getElementById('mapCanvas');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                45,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 0, 15);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 0.8);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+            
+            // Create Kenya map plane
+            const mapGeometry = new THREE.PlaneGeometry(8, 10);
+            const mapMaterial = new THREE.MeshPhongMaterial({
+                color: 0xe8d5b7,
+                emissive: 0x4a3f35,
+                emissiveIntensity: 0.2,
+                side: THREE.DoubleSide
+            });
+            const mapMesh = new THREE.Mesh(mapGeometry, mapMaterial);
+            scene.add(mapMesh);
+            
+            // Add border
+            const borderGeometry = new THREE.EdgesGeometry(mapGeometry);
+            const borderMaterial = new THREE.LineBasicMaterial({ color: 0xd4a574, linewidth: 2 });
+            const border = new THREE.LineSegments(borderGeometry, borderMaterial);
+            scene.add(border);
+            
+            // Add gem markers
+            addGemMarkers();
+            
+            // Raycaster for interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Event listeners
+            canvas.addEventListener('click', onMapClick);
+            canvas.addEventListener('mousemove', onMapHover);
+            window.addEventListener('resize', onWindowResize);
+            
+            // Animation loop
+            animate();
+        }
+
+        // Add gem markers to 3D scene
+        function addGemMarkers() {
+            const regionColors = {
+                coast: 0x00b4d8,
+                rift: 0xff6b6b,
+                north: 0xffd93d,
+                west: 0x6bcf7f,
+                central: 0xa78bfa
+            };
+            
+            GEMS_DATA.forEach((gem, index) => {
+                // Normalize coordinates to fit the map (-4 to 4 for x, -5 to 5 for y)
+                const x = (gem.mapX - 0.5) * 8;
+                const y = (0.5 - gem.mapY) * 10;
+                
+                // Create glowing sphere
+                const geometry = new THREE.SphereGeometry(0.2, 32, 32);
+                const material = new THREE.MeshPhongMaterial({
+                    color: regionColors[gem.region] || 0xffffff,
+                    emissive: regionColors[gem.region] || 0xffffff,
+                    emissiveIntensity: 0.5,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const marker = new THREE.Mesh(geometry, material);
+                marker.position.set(x, y, 0.5);
+                marker.userData = { gemId: gem.id, gem: gem };
+                
+                scene.add(marker);
+                gemMarkers.push(marker);
+                
+                // Add point light for glow effect
+                const light = new THREE.PointLight(regionColors[gem.region] || 0xffffff, 1, 2);
+                light.position.copy(marker.position);
+                scene.add(light);
+            });
+        }
+
+        // Initialize mobile map
+        function initMobileMap() {
+            document.getElementById('mapCanvasContainer').style.display = 'none';
+            document.getElementById('mobileMapContainer').style.display = 'block';
+            
+            const markersContainer = document.getElementById('mobileMarkers');
+            
+            GEMS_DATA.forEach(gem => {
+                const marker = document.createElement('div');
+                marker.className = 'mobile-marker';
+                marker.style.left = (gem.mapX * 100) + '%';
+                marker.style.top = (gem.mapY * 100) + '%';
+                marker.innerHTML = '📍';
+                marker.dataset.gemId = gem.id;
+                marker.dataset.region = gem.region;
+                
+                marker.addEventListener('click', () => {
+                    showGemModal(gem);
+                });
+                
+                markersContainer.appendChild(marker);
+            });
+        }
+
+        // Handle map click
+        function onMapClick(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(gemMarkers);
+            
+            if (intersects.length > 0) {
+                const gem = intersects[0].object.userData.gem;
+                showGemModal(gem);
+            }
+        }
+
+        // Handle map hover
+        function onMapHover(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(gemMarkers);
+            
+            // Reset all markers
+            gemMarkers.forEach(marker => {
+                marker.scale.set(1, 1, 1);
+            });
+            
+            // Scale up hovered marker
+            if (intersects.length > 0) {
+                intersects[0].object.scale.set(1.3, 1.3, 1.3);
+                document.body.style.cursor = 'pointer';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Gentle rotation
+            if (scene && scene.children.length > 0) {
+                scene.rotation.z += 0.0002;
+            }
+            
+            // Pulse gem markers
+            gemMarkers.forEach((marker, index) => {
+                const scale = 1 + Math.sin(Date.now() * 0.001 + index) * 0.1;
+                if (marker.scale.x < 1.2) {
+                    marker.scale.set(scale, scale, scale);
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+
+        // Window resize handler
+        function onWindowResize() {
+            if (renderer && camera) {
+                const container = document.getElementById('mapCanvasContainer');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        }
+
+        // Show gem modal
+        function showGemModal(gem) {
+            selectedGem = gem;
+            
+            document.getElementById('modalImage').src = gem.image;
+            document.getElementById('modalName').textContent = gem.name;
+            document.getElementById('modalRegion').textContent = gem.region.toUpperCase() + ' REGION';
+            document.getElementById('modalDescription').textContent = gem.description;
+            
+            // Tags
+            const tagsContainer = document.getElementById('modalTags');
+            tagsContainer.innerHTML = gem.tags.map(tag => `<span class="gem-tag">${tag}</span>`).join('');
+            
+            // Check if already favorited
+            const favorites = JSON.parse(localStorage.getItem('unboundFavorites') || '[]');
+            const isFavorited = favorites.some(f => f.id === gem.id);
+            const favoriteBtn = document.getElementById('modalFavorite');
+            favoriteBtn.innerHTML = isFavorited 
+                ? '<span id="favoriteIcon">❤️</span> Saved' 
+                : '<span id="favoriteIcon">🤍</span> Save to Favourites';
+            
+            document.getElementById('gemModal').style.display = 'flex';
+        }
+
+        // Setup modal handlers
+        function setupModal() {
+            document.getElementById('modalClose').addEventListener('click', () => {
+                document.getElementById('gemModal').style.display = 'none';
+            });
+            
+            document.getElementById('modalFavorite').addEventListener('click', () => {
+                toggleFavorite(selectedGem);
+            });
+            
+            document.getElementById('modalPlanTrip').addEventListener('click', () => {
+                alert('🗺️ Trip planning feature coming soon! This would integrate with Google Maps or a travel planner.');
+            });
+            
+            document.getElementById('modalShare').addEventListener('click', () => {
+                if (navigator.share) {
+                    navigator.share({
+                        title: selectedGem.name,
+                        text: selectedGem.description,
+                        url: window.location.href
+                    });
+                } else {
+                    alert('📤 Share link copied! (Share feature would work here on mobile)');
+                }
+            });
+            
+            // Close on outside click
+            document.getElementById('gemModal').addEventListener('click', (e) => {
+                if (e.target.id === 'gemModal') {
+                    document.getElementById('gemModal').style.display = 'none';
+                }
+            });
+        }
+
+        // Toggle favorite
+        function toggleFavorite(gem) {
+            let favorites = JSON.parse(localStorage.getItem('unboundFavorites') || '[]');
+            const index = favorites.findIndex(f => f.id === gem.id);
+            
+            if (index > -1) {
+                favorites.splice(index, 1);
+                document.getElementById('modalFavorite').innerHTML = '<span id="favoriteIcon">🤍</span> Save to Favourites';
+            } else {
+                favorites.push(gem);
+                document.getElementById('modalFavorite').innerHTML = '<span id="favoriteIcon">❤️</span> Saved';
+            }
+            
+            localStorage.setItem('unboundFavorites', JSON.stringify(favorites));
+        }
+
+        // Setup filter controls
+        function setupFilterControls() {
+            document.querySelectorAll('.control-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.control-button').forEach(b => b.classList.remove('active'));
+                    button.classList.add('active');
+                    filterGems(button.dataset.filter);
+                });
+            });
+        }
+
+        // Filter gems
+        function filterGems(filter) {
+            currentFilter = filter;
+            
+            if (isMobile) {
+                document.querySelectorAll('.mobile-marker').forEach(marker => {
+                    if (filter === 'all' || marker.dataset.region === filter) {
+                        marker.style.display = 'block';
+                    } else {
+                        marker.style.display = 'none';
+                    }
+                });
+            } else {
+                gemMarkers.forEach(marker => {
+                    const gem = marker.userData.gem;
+                    if (filter === 'all' || gem.region === filter) {
+                        marker.visible = true;
+                    } else {
+                        marker.visible = false;
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

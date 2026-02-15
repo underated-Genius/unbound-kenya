@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Gems - Unbound Kenya</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="favorites-page">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">🦁</span>
+                <span class="logo-text">Unbound Kenya</span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="map.html" class="nav-link">Map</a>
+                <a href="index.html#quiz" class="nav-link">Quiz</a>
+                <a href="my-gems.html" class="nav-link active">My Gems</a>
+            </div>
+            <div class="nav-mobile-toggle" id="mobileToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Favorites Container -->
+    <div class="favorites-container">
+        <div class="favorites-header">
+            <h1 class="page-title">My Saved Gems</h1>
+            <p class="page-subtitle">Your personal collection of Kenya's hidden treasures</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state glass-card" style="display: none;">
+            <div class="empty-icon">💎</div>
+            <h2 class="empty-title">No Gems Saved Yet</h2>
+            <p class="empty-text">
+                Start exploring Kenya's hidden treasures and save your favorites here.
+                <br>Every gem you save builds your personalized travel collection.
+            </p>
+            <button class="cta-button" onclick="window.location.href='map.html'">
+                Explore Map
+                <span class="cta-arrow">→</span>
+            </button>
+        </div>
+
+        <!-- Favorites Grid -->
+        <div id="favoritesGrid" class="favorites-grid">
+            <!-- Dynamically populated -->
+        </div>
+
+        <!-- Actions -->
+        <div class="favorites-actions" id="favoritesActions" style="display: none;">
+            <button class="action-button secondary" id="clearAllBtn">
+                🗑️ Clear All
+            </button>
+            <button class="action-button primary" id="exportBtn">
+                📥 Export List
+            </button>
+            <button class="action-button primary" id="planTripBtn">
+                🗺️ Plan Trip with All
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="data.js"></script>
+    <script>
+        // Load favorites on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle mobile nav toggle
+            const mobileToggle = document.getElementById('mobileToggle');
+            const navLinks = document.querySelector('.nav-links');
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', function() {
+                    navLinks.classList.toggle('active');
+                });
+            }
+
+            loadFavorites();
+            setupActions();
+        });
+
+        // Load and display favorites
+        function loadFavorites() {
+            const favorites = JSON.parse(localStorage.getItem('unboundFavorites') || '[]');
+            const grid = document.getElementById('favoritesGrid');
+            const emptyState = document.getElementById('emptyState');
+            const actions = document.getElementById('favoritesActions');
+
+            if (favorites.length === 0) {
+                emptyState.style.display = 'flex';
+                grid.style.display = 'none';
+                actions.style.display = 'none';
+            } else {
+                emptyState.style.display = 'none';
+                grid.style.display = 'grid';
+                actions.style.display = 'flex';
+
+                grid.innerHTML = favorites.map(gem => `
+                    <div class="favorite-card glass-card" data-gem-id="${gem.id}">
+                        <div class="favorite-image-container">
+                            <img src="${gem.image}" alt="${gem.name}" class="favorite-image">
+                            <button class="remove-favorite" onclick="removeFavorite('${gem.id}')">
+                                ❌
+                            </button>
+                        </div>
+                        <div class="favorite-content">
+                            <h3 class="favorite-name">${gem.name}</h3>
+                            <p class="favorite-region">${gem.region.toUpperCase()} REGION</p>
+                            <p class="favorite-description">${gem.description}</p>
+                            <div class="favorite-tags">
+                                ${gem.tags.slice(0, 3).map(tag => `<span class="gem-tag">${tag}</span>`).join('')}
+                            </div>
+                            <div class="favorite-actions">
+                                <button class="favorite-button primary" onclick="viewOnMap('${gem.id}')">
+                                    📍 View on Map
+                                </button>
+                                <button class="favorite-button secondary" onclick="shareGem('${gem.id}')">
+                                    📤 Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Remove favorite
+        function removeFavorite(gemId) {
+            let favorites = JSON.parse(localStorage.getItem('unboundFavorites') || '[]');
+            favorites = favorites.filter(gem => gem.id !== gemId);
+            localStorage.setItem('unboundFavorites', JSON.stringify(favorites));
+            
+            // Animate removal
+            const card = document.querySelector(`[data-gem-id="${gemId}"]`);
+            card.style.animation = 'fadeOut 0.3s ease-out';
+            setTimeout(() => {
+                loadFavorites();
+            }, 300);
+        }
+
+        // View gem on map
+        function viewOnMap(gemId) {
+            const gem = GEMS_DATA.find(g => g.id === gemId);
+            if (gem) {
+                window.location.href = `map.html?region=${gem.region}&highlight=${gemId}`;
+            }
+        }
+
+        // Share gem
+        function shareGem(gemId) {
+            const gem = GEMS_DATA.find(g => g.id === gemId);
+            if (gem) {
+                if (navigator.share) {
+                    navigator.share({
+                        title: gem.name,
+                        text: gem.description,
+                        url: window.location.origin + '/map.html?highlight=' + gemId
+                    });
+                } else {
+                    alert(`📤 Share: ${gem.name}\n\n${gem.description}\n\n(Share functionality would work here on mobile)`);
+                }
+            }
+        }
+
+        // Setup action buttons
+        function setupActions() {
+            document.getElementById('clearAllBtn').addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear all saved gems? This cannot be undone.')) {
+                    localStorage.removeItem('unboundFavorites');
+                    loadFavorites();
+                }
+            });
+
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                const favorites = JSON.parse(localStorage.getItem('unboundFavorites') || '[]');
+                const text = favorites.map(gem => 
+                    `${gem.name} (${gem.region})\n${gem.description}\n---`
+                ).join('\n\n');
+                
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'my-kenyan-gems.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            document.getElementById('planTripBtn').addEventListener('click', () => {
+                const favorites = JSON.parse(localStorage.getItem('unboundFavorites') || '[]');
+                if (favorites.length > 0) {
+                    alert(`🗺️ Planning trip with ${favorites.length} gems!\n\n(This would integrate with mapping services to create an optimized route)`);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
