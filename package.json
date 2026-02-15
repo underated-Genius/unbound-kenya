@@ -1,13 +1,11 @@
 {
   "name": "unbound-kenya",
   "version": "1.0.0",
-  "description": "Discover the 95% - Kenya's Hidden Tourism Gems",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "next": "14.1.0",
